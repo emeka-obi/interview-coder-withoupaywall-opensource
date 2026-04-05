@@ -27,6 +27,31 @@ const GeneralAnswer: React.FC<GeneralAnswerProps> = ({ data, onReset }) => {
 
   const { question, choices, correct_answer, explanation } = data
 
+  // Guard: if required fields are missing show a fallback rather than a blank/crash
+  if (!question || !correct_answer || !explanation) {
+    return (
+      <div ref={contentRef} className="relative">
+        <div className="px-4 py-3">
+          <div className="text-xs text-white/90 backdrop-blur-md bg-black/60 rounded-lg py-2 px-4 flex items-center gap-4 w-fit">
+            <div
+              className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-white/10 transition-colors"
+              onClick={onReset}
+            >
+              <span className="text-[11px] leading-none">Reset</span>
+              <div className="flex gap-1">
+                <button className="bg-white/10 rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">{COMMAND_KEY}</button>
+                <button className="bg-white/10 rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">R</button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 text-[13px] text-white/70 bg-black/60 rounded-md px-4 py-3">
+            Could not parse a complete answer from the AI response. Please try again with a clearer screenshot.
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div ref={contentRef} className="relative">
       <div className="space-y-3 px-4 py-3">

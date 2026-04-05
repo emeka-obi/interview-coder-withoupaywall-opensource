@@ -237,7 +237,8 @@ export class ProcessingHelper {
     }
 
     const view = this.deps.getView()
-    console.log("Processing screenshots in view:", view)
+    const isGeneralMode = config.mode === "general"
+    console.log("Processing screenshots in view:", view, "mode:", config.mode)
 
     if (view === "queue") {
       mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.INITIAL_START)
@@ -286,14 +287,18 @@ export class ProcessingHelper {
           throw new Error("Failed to load screenshot data");
         }
 
-        const isGeneralMode = config.mode === "general";
         const result = isGeneralMode
           ? await this.processGeneralQuestionHelper(validScreenshots, signal)
           : await this.processScreenshotsHelper(validScreenshots, signal)
 
         if (!result.success) {
           console.log("Processing failed:", result.error)
-          if (result.error?.includes("API Key") || result.error?.includes("OpenAI") || result.error?.includes("Gemini")) {
+          if (isGeneralMode) {
+            mainWindow.webContents.send(
+              this.deps.PROCESSING_EVENTS.GENERAL_ANSWER_ERROR,
+              result.error || "Failed to analyze question."
+            )
+          } else if (result.error?.includes("API Key") || result.error?.includes("OpenAI") || result.error?.includes("Gemini")) {
             mainWindow.webContents.send(
               this.deps.PROCESSING_EVENTS.API_KEY_INVALID
             )
@@ -325,20 +330,19 @@ export class ProcessingHelper {
           this.deps.setView("solutions")
         }
       } catch (error: any) {
-        mainWindow.webContents.send(
-          this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
-          error
-        )
         console.error("Processing error:", error)
-        if (axios.isCancel(error)) {
+        const errorMessage = axios.isCancel(error)
+          ? "Processing was canceled."
+          : error.message || "Server error. Please try again."
+        if (isGeneralMode) {
           mainWindow.webContents.send(
-            this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
-            "Processing was canceled by the user."
+            this.deps.PROCESSING_EVENTS.GENERAL_ANSWER_ERROR,
+            errorMessage
           )
         } else {
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
-            error.message || "Server error. Please try again."
+            errorMessage
           )
         }
         // Reset view back to queue on error
@@ -1301,6 +1305,20 @@ If you include code examples, use proper markdown code blocks with language spec
     }
   }
 
+  /**
+   * Robustly extracts the first complete JSON object from an AI response,
+   * handling markdown code fences and any leading/trailing prose.
+   */
+  private extractJsonFromText(text: string): any {
+    const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error("No valid JSON object found in AI response.");
+    }
+    return JSON.parse(cleaned.slice(start, end + 1));
+  }
+
   private async processGeneralQuestionHelper(
     screenshots: Array<{ path: string; data: string }>,
     signal: AbortSignal
@@ -1352,7 +1370,7 @@ Return only the JSON, no markdown code fences, no other text.`;
           temperature: 0.1
         }, { signal });
         const text = response.choices[0].message.content || "";
-        answerInfo = JSON.parse(text.replace(/```json|```/g, "").trim());
+        answerInfo = this.extractJsonFromText(text);
 
       } else if (config.apiProvider === "gemini") {
         if (!this.geminiApiKey) {
@@ -1375,7 +1393,7 @@ Return only the JSON, no markdown code fences, no other text.`;
           throw new Error("Empty response from Gemini API");
         }
         const text = responseData.candidates[0].content.parts[0].text;
-        answerInfo = JSON.parse(text.replace(/```json|```/g, "").trim());
+        answerInfo = this.extractJsonFromText(text);
 
       } else if (config.apiProvider === "anthropic") {
         if (!this.anthropicClient) {
@@ -1398,7 +1416,17 @@ Return only the JSON, no markdown code fences, no other text.`;
           temperature: 0.1
         });
         const text = (response.content[0] as { type: "text"; text: string }).text;
-        answerInfo = JSON.parse(text.replace(/```json|```/g, "").trim());
+        answerInfo = this.extractJsonFromText(text);
+      }
+
+      // Guard: provider block may not have matched (should not happen, but be safe)
+      if (!answerInfo || typeof answerInfo !== "object") {
+        return { success: false, error: "No response from AI. Please try again." };
+      }
+
+      // Validate required fields
+      if (!answerInfo.question || !answerInfo.correct_answer || !answerInfo.explanation) {
+        return { success: false, error: "Incomplete response from AI. Please take a clearer screenshot and try again." };
       }
 
       if (mainWindow) {

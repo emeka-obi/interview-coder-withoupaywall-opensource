@@ -185,7 +185,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               }}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] leading-none">Solve </span>
+                <span className="text-[11px] leading-none">{mode === "general" ? "Analyze" : "Solve"} </span>
                 <div className="flex gap-1 ml-2">
                   <button className="bg-white/10 rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
                     {COMMAND_KEY}
@@ -393,7 +393,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                         }}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="truncate">Solve</span>
+                          <span className="truncate">{mode === "general" ? "Analyze" : "Solve"}</span>
                           <div className="flex gap-1 flex-shrink-0">
                             <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] leading-none">
                               {COMMAND_KEY}
@@ -405,8 +405,10 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                         </div>
                         <p className="text-[10px] leading-relaxed text-white/70 truncate mt-1">
                           {screenshotCount > 0
-                            ? "Generate a solution based on the current problem."
-                            : "Take a screenshot first to generate a solution."}
+                            ? mode === "general"
+                              ? "Identify the correct answer from the screenshot."
+                              : "Generate a solution based on the current problem."
+                            : "Take a screenshot first."}
                         </p>
                       </div>
                       
