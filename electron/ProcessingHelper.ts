@@ -314,15 +314,17 @@ export class ProcessingHelper {
           return
         }
 
-        // Only set view to solutions if processing succeeded
-        console.log("Setting view to solutions after successful processing")
+        // Transition view based on mode
         if (isGeneralMode) {
+          // Keep main-process view as "queue" so Cmd+H and Cmd+Enter continue
+          // to operate on the main screenshot queue while the answer is displayed.
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.GENERAL_ANSWER_SUCCESS,
             result.data
           )
-          this.deps.setView("solutions")
+          // Do NOT advance to "solutions" — leave view as "queue"
         } else {
+          console.log("Setting view to solutions after successful processing")
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.SOLUTION_SUCCESS,
             result.data
