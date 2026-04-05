@@ -54,13 +54,18 @@ export interface ElectronAPI {
   getPlatform: () => string
   
   // New methods for OpenAI integration
-  getConfig: () => Promise<{ apiKey: string; model: string }>
-  updateConfig: (config: { apiKey?: string; model?: string }) => Promise<boolean>
+  getConfig: () => Promise<{ apiKey: string; model: string; language?: string; mode?: "coding" | "general" }>
+  updateConfig: (config: { apiKey?: string; model?: string; language?: string; opacity?: number; mode?: "coding" | "general" }) => Promise<boolean>
   checkApiKey: () => Promise<boolean>
   validateApiKey: (apiKey: string) => Promise<{ valid: boolean; error?: string }>
   openLink: (url: string) => void
   onApiKeyInvalid: (callback: () => void) => () => void
   removeListener: (eventName: string, callback: (...args: any[]) => void) => void
+  onShowSettings: (callback: () => void) => () => void
+  onDeleteLastScreenshot: (callback: () => void) => () => void
+  deleteLastScreenshot: () => Promise<{ success: boolean; error?: string }>
+  onGeneralAnswerSuccess: (callback: (data: any) => void) => () => void
+  onGeneralAnswerError: (callback: (error: string) => void) => () => void
 }
 
 declare global {

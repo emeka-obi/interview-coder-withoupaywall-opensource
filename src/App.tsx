@@ -41,6 +41,7 @@ function App() {
   })
   const [credits, setCredits] = useState<number>(999) // Unlimited credits
   const [currentLanguage, setCurrentLanguage] = useState<string>("python")
+  const [mode, setMode] = useState<"coding" | "general">("coding")
   const [isInitialized, setIsInitialized] = useState(false)
   const [hasApiKey, setHasApiKey] = useState(false)
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false)
@@ -164,6 +165,11 @@ function App() {
         } else {
           updateLanguage("python")
         }
+
+        // Load mode preference
+        if (config && config.mode) {
+          setMode(config.mode)
+        }
         
         // Model settings are now managed through the settings dialog
         // and stored in config as extractionModel, solutionModel, and debuggingModel
@@ -247,6 +253,8 @@ function App() {
                   credits={credits}
                   currentLanguage={currentLanguage}
                   setLanguage={updateLanguage}
+                  mode={mode}
+                  setMode={setMode}
                 />
               ) : (
                 <WelcomeScreen onOpenSettings={handleOpenSettings} />

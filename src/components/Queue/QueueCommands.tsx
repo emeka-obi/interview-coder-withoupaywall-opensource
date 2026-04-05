@@ -11,6 +11,8 @@ interface QueueCommandsProps {
   credits: number
   currentLanguage: string
   setLanguage: (language: string) => void
+  mode: "coding" | "general"
+  setMode: (mode: "coding" | "general") => void
 }
 
 const QueueCommands: React.FC<QueueCommandsProps> = ({
@@ -18,7 +20,9 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   screenshotCount = 0,
   credits,
   currentLanguage,
-  setLanguage
+  setLanguage,
+  mode,
+  setMode
 }) => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -193,6 +197,36 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               </div>
             </div>
           )}
+
+          {/* Mode Toggle */}
+          <div className="flex items-center gap-1 bg-white/10 rounded-md p-0.5">
+            <button
+              className={`px-2 py-1 rounded text-[11px] leading-none transition-colors ${
+                mode === "coding"
+                  ? "bg-white/20 text-white"
+                  : "text-white/50 hover:text-white/80"
+              }`}
+              onClick={() => {
+                setMode("coding")
+                window.electronAPI.updateConfig({ mode: "coding" })
+              }}
+            >
+              Code
+            </button>
+            <button
+              className={`px-2 py-1 rounded text-[11px] leading-none transition-colors ${
+                mode === "general"
+                  ? "bg-white/20 text-white"
+                  : "text-white/50 hover:text-white/80"
+              }`}
+              onClick={() => {
+                setMode("general")
+                window.electronAPI.updateConfig({ mode: "general" })
+              }}
+            >
+              General
+            </button>
+          </div>
 
           {/* Separator */}
           <div className="mx-2 h-4 w-px bg-white/20" />

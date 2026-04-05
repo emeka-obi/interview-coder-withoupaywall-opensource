@@ -19,7 +19,11 @@ export const PROCESSING_EVENTS = {
   //states for processing the debugging
   DEBUG_START: "debug-start",
   DEBUG_SUCCESS: "debug-success",
-  DEBUG_ERROR: "debug-error"
+  DEBUG_ERROR: "debug-error",
+
+  //states for general question answering
+  GENERAL_ANSWER_SUCCESS: "general-answer-success",
+  GENERAL_ANSWER_ERROR: "general-answer-error"
 } as const
 
 // At the top of the file
@@ -205,7 +209,7 @@ const electronAPI = {
   
   // New methods for OpenAI API integration
   getConfig: () => ipcRenderer.invoke("get-config"),
-  updateConfig: (config: { apiKey?: string; model?: string; language?: string; opacity?: number }) => 
+  updateConfig: (config: { apiKey?: string; model?: string; language?: string; opacity?: number; mode?: "coding" | "general" }) =>
     ipcRenderer.invoke("update-config", config),
   onShowSettings: (callback: () => void) => {
     const subscription = () => callback()
@@ -236,7 +240,21 @@ const electronAPI = {
       ipcRenderer.removeListener("delete-last-screenshot", subscription)
     }
   },
-  deleteLastScreenshot: () => ipcRenderer.invoke("delete-last-screenshot")
+  deleteLastScreenshot: () => ipcRenderer.invoke("delete-last-screenshot"),
+  onGeneralAnswerSuccess: (callback: (data: any) => void) => {
+    const subscription = (_: any, data: any) => callback(data)
+    ipcRenderer.on(PROCESSING_EVENTS.GENERAL_ANSWER_SUCCESS, subscription)
+    return () => {
+      ipcRenderer.removeListener(PROCESSING_EVENTS.GENERAL_ANSWER_SUCCESS, subscription)
+    }
+  },
+  onGeneralAnswerError: (callback: (error: string) => void) => {
+    const subscription = (_: any, error: string) => callback(error)
+    ipcRenderer.on(PROCESSING_EVENTS.GENERAL_ANSWER_ERROR, subscription)
+    return () => {
+      ipcRenderer.removeListener(PROCESSING_EVENTS.GENERAL_ANSWER_ERROR, subscription)
+    }
+  }
 }
 
 // Before exposing the API

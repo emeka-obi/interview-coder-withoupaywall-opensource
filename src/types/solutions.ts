@@ -1,3 +1,15 @@
+export interface AnswerChoice {
+  letter: string;
+  text: string;
+}
+
+export interface GeneralAnswerData {
+  question: string;
+  choices: AnswerChoice[] | null;
+  correct_answer: string;
+  explanation: string;
+}
+
 export interface Solution {
   initial_thoughts: string[]
   thought_steps: string[]

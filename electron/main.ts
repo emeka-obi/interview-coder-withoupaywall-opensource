@@ -47,7 +47,9 @@ const state = {
     INITIAL_SOLUTION_ERROR: "solution-error",
     DEBUG_START: "debug-start",
     DEBUG_SUCCESS: "debug-success",
-    DEBUG_ERROR: "debug-error"
+    DEBUG_ERROR: "debug-error",
+    GENERAL_ANSWER_SUCCESS: "general-answer-success",
+    GENERAL_ANSWER_ERROR: "general-answer-error"
   } as const
 }
 

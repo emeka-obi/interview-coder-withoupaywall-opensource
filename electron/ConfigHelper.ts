@@ -13,6 +13,7 @@ interface Config {
   debuggingModel: string;
   language: string;
   opacity: number;
+  mode: "coding" | "general";
 }
 
 export class ConfigHelper extends EventEmitter {
@@ -24,7 +25,8 @@ export class ConfigHelper extends EventEmitter {
     solutionModel: "gemini-2.0-flash",
     debuggingModel: "gemini-2.0-flash",
     language: "python",
-    opacity: 1.0
+    opacity: 1.0,
+    mode: "coding"
   };
 
   constructor() {
@@ -283,6 +285,21 @@ export class ConfigHelper extends EventEmitter {
    */
   public setLanguage(language: string): void {
     this.updateConfig({ language });
+  }
+
+  /**
+   * Get the current mode (coding or general)
+   */
+  public getMode(): "coding" | "general" {
+    const config = this.loadConfig();
+    return config.mode || "coding";
+  }
+
+  /**
+   * Set the mode
+   */
+  public setMode(mode: "coding" | "general"): void {
+    this.updateConfig({ mode });
   }
   
   /**

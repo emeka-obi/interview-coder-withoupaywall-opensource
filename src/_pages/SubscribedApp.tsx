@@ -3,21 +3,28 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import Queue from "../_pages/Queue"
 import Solutions from "../_pages/Solutions"
+import GeneralAnswer from "../_pages/GeneralAnswer"
 import { useToast } from "../contexts/toast"
+import { GeneralAnswerData } from "../types/solutions"
 
 interface SubscribedAppProps {
   credits: number
   currentLanguage: string
   setLanguage: (language: string) => void
+  mode: "coding" | "general"
+  setMode: (mode: "coding" | "general") => void
 }
 
 const SubscribedApp: React.FC<SubscribedAppProps> = ({
   credits,
   currentLanguage,
-  setLanguage
+  setLanguage,
+  mode,
+  setMode
 }) => {
   const queryClient = useQueryClient()
-  const [view, setView] = useState<"queue" | "solutions" | "debug">("queue")
+  const [view, setView] = useState<"queue" | "solutions" | "debug" | "general">("queue")
+  const [generalAnswerData, setGeneralAnswerData] = useState<GeneralAnswerData | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { showToast } = useToast()
 
@@ -36,6 +43,7 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["new_solution"]
       })
+      setGeneralAnswerData(null)
       setView("queue")
     })
 
@@ -129,10 +137,24 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
       }),
       window.electronAPI.onSolutionError((error: string) => {
         showToast("Error", error, "error")
+      }),
+      window.electronAPI.onGeneralAnswerSuccess((data: GeneralAnswerData) => {
+        setGeneralAnswerData(data)
+        setView("general")
+      }),
+      window.electronAPI.onGeneralAnswerError((error: string) => {
+        showToast("Error", error, "error")
+        setView("queue")
       })
     ]
     return () => cleanupFunctions.forEach((fn) => fn())
   }, [view])
+
+  const handleReset = async () => {
+    await window.electronAPI.triggerReset()
+    setGeneralAnswerData(null)
+    setView("queue")
+  }
 
   return (
     <div ref={containerRef} className="min-h-0">
@@ -142,7 +164,11 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
           credits={credits}
           currentLanguage={currentLanguage}
           setLanguage={setLanguage}
+          mode={mode}
+          setMode={setMode}
         />
+      ) : view === "general" && generalAnswerData ? (
+        <GeneralAnswer data={generalAnswerData} onReset={handleReset} />
       ) : view === "solutions" ? (
         <Solutions
           setView={setView}

@@ -286,7 +286,10 @@ export class ProcessingHelper {
           throw new Error("Failed to load screenshot data");
         }
 
-        const result = await this.processScreenshotsHelper(validScreenshots, signal)
+        const isGeneralMode = config.mode === "general";
+        const result = isGeneralMode
+          ? await this.processGeneralQuestionHelper(validScreenshots, signal)
+          : await this.processScreenshotsHelper(validScreenshots, signal)
 
         if (!result.success) {
           console.log("Processing failed:", result.error)
@@ -308,11 +311,19 @@ export class ProcessingHelper {
 
         // Only set view to solutions if processing succeeded
         console.log("Setting view to solutions after successful processing")
-        mainWindow.webContents.send(
-          this.deps.PROCESSING_EVENTS.SOLUTION_SUCCESS,
-          result.data
-        )
-        this.deps.setView("solutions")
+        if (isGeneralMode) {
+          mainWindow.webContents.send(
+            this.deps.PROCESSING_EVENTS.GENERAL_ANSWER_SUCCESS,
+            result.data
+          )
+          this.deps.setView("solutions")
+        } else {
+          mainWindow.webContents.send(
+            this.deps.PROCESSING_EVENTS.SOLUTION_SUCCESS,
+            result.data
+          )
+          this.deps.setView("solutions")
+        }
       } catch (error: any) {
         mainWindow.webContents.send(
           this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
@@ -1287,6 +1298,117 @@ If you include code examples, use proper markdown code blocks with language spec
     } catch (error: any) {
       console.error("Debug processing error:", error);
       return { success: false, error: error.message || "Failed to process debug request" };
+    }
+  }
+
+  private async processGeneralQuestionHelper(
+    screenshots: Array<{ path: string; data: string }>,
+    signal: AbortSignal
+  ) {
+    try {
+      const config = configHelper.loadConfig();
+      const mainWindow = this.deps.getMainWindow();
+      const imageDataList = screenshots.map(s => s.data);
+
+      if (mainWindow) {
+        mainWindow.webContents.send("processing-status", {
+          message: "Analyzing question...",
+          progress: 30
+        });
+      }
+
+      const systemPrompt = `You are a general question answering assistant. Analyze the screenshot and identify the question being asked, then determine the correct answer.
+
+Return ONLY a JSON object with these fields:
+- question: the full question text as written in the screenshot
+- choices: an array of {letter, text} objects if this is multiple choice (e.g. [{"letter":"A","text":"Red, White, Blue"}]), or null if open-ended
+- correct_answer: the letter of the correct choice if MCQ (e.g. "A"), or a concise answer if open-ended
+- explanation: a clear explanation of why this answer is correct
+
+Return only the JSON, no markdown code fences, no other text.`;
+
+      let answerInfo: any;
+
+      if (config.apiProvider === "openai") {
+        if (!this.openaiClient) {
+          return { success: false, error: "OpenAI API key not configured. Please check your settings." };
+        }
+        const response = await this.openaiClient.chat.completions.create({
+          model: config.extractionModel || "gpt-4o",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Analyze this question screenshot and return the answer as JSON." },
+                ...imageDataList.map(data => ({
+                  type: "image_url" as const,
+                  image_url: { url: `data:image/png;base64,${data}` }
+                }))
+              ]
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.1
+        }, { signal });
+        const text = response.choices[0].message.content || "";
+        answerInfo = JSON.parse(text.replace(/```json|```/g, "").trim());
+
+      } else if (config.apiProvider === "gemini") {
+        if (!this.geminiApiKey) {
+          return { success: false, error: "Gemini API key not configured. Please check your settings." };
+        }
+        const geminiMessages = [{
+          role: "user",
+          parts: [
+            { text: `${systemPrompt}\n\nAnalyze this question screenshot and return the answer as JSON.` },
+            ...imageDataList.map(data => ({ inlineData: { mimeType: "image/png", data } }))
+          ]
+        }];
+        const response = await axios.default.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/${config.extractionModel || "gemini-2.0-flash"}:generateContent?key=${this.geminiApiKey}`,
+          { contents: geminiMessages, generationConfig: { temperature: 0.1, maxOutputTokens: 2000 } },
+          { signal }
+        );
+        const responseData = response.data as GeminiResponse;
+        if (!responseData.candidates || responseData.candidates.length === 0) {
+          throw new Error("Empty response from Gemini API");
+        }
+        const text = responseData.candidates[0].content.parts[0].text;
+        answerInfo = JSON.parse(text.replace(/```json|```/g, "").trim());
+
+      } else if (config.apiProvider === "anthropic") {
+        if (!this.anthropicClient) {
+          return { success: false, error: "Anthropic API key not configured. Please check your settings." };
+        }
+        const response = await this.anthropicClient.messages.create({
+          model: config.extractionModel || "claude-3-7-sonnet-20250219",
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: "Analyze this question screenshot and return the answer as JSON." },
+              ...imageDataList.map(data => ({
+                type: "image" as const,
+                source: { type: "base64" as const, media_type: "image/png" as const, data }
+              }))
+            ]
+          }],
+          temperature: 0.1
+        });
+        const text = (response.content[0] as { type: "text"; text: string }).text;
+        answerInfo = JSON.parse(text.replace(/```json|```/g, "").trim());
+      }
+
+      if (mainWindow) {
+        mainWindow.webContents.send("processing-status", { message: "Answer ready", progress: 100 });
+      }
+
+      return { success: true, data: answerInfo };
+    } catch (error: any) {
+      console.error("General question processing error:", error);
+      return { success: false, error: error.message || "Failed to process question." };
     }
   }
 
