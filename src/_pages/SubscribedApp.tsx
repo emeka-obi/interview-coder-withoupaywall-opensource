@@ -25,8 +25,13 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
   const queryClient = useQueryClient()
   const [view, setView] = useState<"queue" | "solutions" | "debug" | "general">("queue")
   const [generalAnswerData, setGeneralAnswerData] = useState<GeneralAnswerData | null>(null)
+  const [isGeneralProcessing, setIsGeneralProcessing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { showToast } = useToast()
+
+  // Keep a ref so IPC callbacks always see the latest mode without stale closures
+  const modeRef = useRef(mode)
+  useEffect(() => { modeRef.current = mode }, [mode])
 
   // Let's ensure we reset queries etc. if some electron signals happen
   useEffect(() => {
@@ -44,6 +49,7 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
         queryKey: ["new_solution"]
       })
       setGeneralAnswerData(null)
+      setIsGeneralProcessing(false)
       setView("queue")
     })
 
@@ -98,7 +104,11 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
   useEffect(() => {
     const cleanupFunctions = [
       window.electronAPI.onSolutionStart(() => {
-        setView("solutions")
+        if (modeRef.current === "general") {
+          setIsGeneralProcessing(true)
+        } else {
+          setView("solutions")
+        }
       }),
       window.electronAPI.onUnauthorized(() => {
         queryClient.removeQueries({
@@ -137,13 +147,16 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
       }),
       window.electronAPI.onSolutionError((error: string) => {
         showToast("Error", error, "error")
+        setIsGeneralProcessing(false)
       }),
       window.electronAPI.onGeneralAnswerSuccess((data: GeneralAnswerData) => {
         setGeneralAnswerData(data)
+        setIsGeneralProcessing(false)
         setView("general")
       }),
       window.electronAPI.onGeneralAnswerError((error: string) => {
         showToast("Error", error, "error")
+        setIsGeneralProcessing(false)
         setView("queue")
       })
     ]
@@ -166,6 +179,7 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
           setLanguage={setLanguage}
           mode={mode}
           setMode={setMode}
+          isGeneralProcessing={isGeneralProcessing}
         />
       ) : view === "general" && generalAnswerData ? (
         <GeneralAnswer data={generalAnswerData} onReset={handleReset} />

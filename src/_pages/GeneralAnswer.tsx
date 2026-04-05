@@ -71,9 +71,13 @@ const GeneralAnswer: React.FC<GeneralAnswerProps> = ({ data, onReset }) => {
                   </h2>
                   <div className="space-y-2">
                     {choices.map((choice) => {
+                      const normalizedAnswer = correct_answer.trim().toUpperCase()
+                      const letter = choice.letter.trim().toUpperCase()
+                      // Match "A", "A.", "A)", or "A. some text"
                       const isCorrect =
-                        choice.letter.toUpperCase() ===
-                        correct_answer.toUpperCase()
+                        normalizedAnswer === letter ||
+                        normalizedAnswer.startsWith(letter + ".") ||
+                        normalizedAnswer.startsWith(letter + ")")
                       return (
                         <div
                           key={choice.letter}

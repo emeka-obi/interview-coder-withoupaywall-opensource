@@ -23,6 +23,7 @@ interface QueueProps {
   setLanguage: (language: string) => void
   mode: "coding" | "general"
   setMode: (mode: "coding" | "general") => void
+  isGeneralProcessing?: boolean
 }
 
 const Queue: React.FC<QueueProps> = ({
@@ -31,7 +32,8 @@ const Queue: React.FC<QueueProps> = ({
   currentLanguage,
   setLanguage,
   mode,
-  setMode
+  setMode,
+  isGeneralProcessing = false
 }) => {
   const { showToast } = useToast()
 
@@ -159,6 +161,15 @@ const Queue: React.FC<QueueProps> = ({
             mode={mode}
             setMode={setMode}
           />
+
+          {isGeneralProcessing && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-white/70 bg-black/40 rounded-lg px-3 py-2 w-fit">
+              <div className="w-3 h-3 border-2 border-white/20 border-t-white/70 rounded-full animate-spin shrink-0" />
+              <span className="bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
+                Analyzing question...
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
