@@ -52,3 +52,29 @@
 
 These changes fix the issues while preserving the original app's look and feel, just removing the payment restrictions and making everything work properly.
 
+---
+
+## General Question Answering Mode (April 2026)
+
+A new **General mode** has been added alongside the existing coding mode, allowing the app to handle any type of question — multiple choice, open-ended, or plain English — not just programming problems.
+
+### How to use
+- A **Code / General** toggle pill appears in the screenshot queue toolbar.
+- Switch to **General** before taking screenshots of a non-coding question.
+- Press **Cmd+Enter** (labelled "Analyze" in General mode) to submit.
+- The app returns the correct answer with a full explanation. For MCQ questions, the correct choice is highlighted in green.
+
+### What was added
+- **Mode toggle**: `Code` and `General` pill buttons in the queue command bar.
+- **GeneralAnswer page**: displays the question, the highlighted correct choice, and an explanation.
+- **Loading state**: a spinner and "Analyzing question..." label appear while the AI processes the question.
+- **All three AI providers supported**: OpenAI, Gemini, and Anthropic all handle general questions.
+- **Config persistence**: the selected mode (`coding` / `general`) is saved to local config.
+
+### Bug fixes and hardening
+- Errors in General mode now correctly surface to the UI instead of being silently swallowed.
+- Robust JSON parsing handles AI responses that include prose before the JSON payload.
+- MCQ answer matching uses letter-prefix logic (`A.` / `A)`) in addition to exact match, so varied AI response formats are handled correctly.
+- Fixed a view flicker where the coding Solutions page would briefly flash before the general answer arrived.
+- Fixed keyboard shortcuts (`Cmd+H`, `Cmd+Enter`) reverting to debug/extra-screenshot mode after a general answer was displayed.
+
